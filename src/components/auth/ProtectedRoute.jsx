@@ -1,6 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { PageSkeleton } from '../ui/Skeleton'
 
 export function ProtectedRoute({ children }) {
   const { isCloudEnabled, user, loading } = useAuth()
@@ -10,10 +9,9 @@ export function ProtectedRoute({ children }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
-        <div className="w-full max-w-4xl px-6">
-          <PageSkeleton />
-        </div>
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center gap-4">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-500" />
+        <p className="text-sm text-slate-600">Loading…</p>
       </div>
     )
   }

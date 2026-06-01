@@ -15,22 +15,29 @@ import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import Admin from './pages/Admin'
 
+function AuthedShell() {
+  return (
+    <PoolProvider>
+      <Layout />
+    </PoolProvider>
+  )
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <PoolProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute>
-                    <Layout />
-                  </ProtectedRoute>
-                }
-              >
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <AuthedShell />
+                </ProtectedRoute>
+              }
+            >
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="members" element={<Members />} />
@@ -42,9 +49,8 @@ export default function App() {
                 <Route path="settings" element={<Settings />} />
                 <Route path="admin" element={<Admin />} />
               </Route>
-            </Routes>
-          </BrowserRouter>
-        </PoolProvider>
+          </Routes>
+        </BrowserRouter>
       </ToastProvider>
     </AuthProvider>
   )

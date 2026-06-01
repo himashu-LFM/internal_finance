@@ -209,8 +209,9 @@ export function PoolProvider({ children }) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [state, dispatch] = useReducer(reducer, () =>
-    cloud ? getSeedState() : getLocalInitialState()
+    normalizePoolState(cloud ? getSeedState() : getLocalInitialState())
   )
+  const safeState = useMemo(() => normalizePoolState(state), [state])
   const skipSaveRef = useRef(false)
   const remoteSaveRef = useRef(false)
 
@@ -276,7 +277,7 @@ export function PoolProvider({ children }) {
       const timer = setTimeout(async () => {
         try {
           remoteSaveRef.current = true
-          await savePoolState(state, user.id)
+          await savePoolState(safeState, user.id)
         } catch (err) {
           console.error(err)
           toast('Failed to save — check connection', 'error')
@@ -285,8 +286,8 @@ export function PoolProvider({ children }) {
       return () => clearTimeout(timer)
     }
 
-    saveState(state)
-  }, [state, loading, cloud, canEdit, user?.id, toast])
+    saveState(safeState)
+  }, [safeState, loading, cloud, canEdit, user?.id, toast])
 
   const guardedDispatch = useCallback(
     (action) => {
@@ -310,32 +311,42 @@ export function PoolProvider({ children }) {
   const ledger = useMemo(
     () =>
       generateLedger({
-        contributions: state.contributions,
-        payables: state.payables,
-        receivables: state.receivables,
-        settings: state.settings,
+        contributions: safeState.contributions,
+        payables: safeState.payables,
+        receivables: safeState.receivables,
+        settings: safeState.settings,
       }),
-    [state.contributions, state.payables, state.receivables, state.settings]
+    [
+      safeState.contributions,
+      safeState.payables,
+      safeState.receivables,
+      safeState.settings,
+    ]
   )
 
   const stats = useMemo(
     () => ({
       poolBalance: getPoolBalance(
-        state.contributions,
-        state.payables,
-        state.settings
+        safeState.contributions,
+        safeState.payables,
+        safeState.settings
       ),
-      totalCollected: getTotalCollected(state.contributions),
-      totalReceivables: getTotalReceivables(state.receivables),
-      totalPayables: getTotalPayablesOutstanding(state.payables),
-      overdueReceivables: getOverdueReceivables(state.receivables),
+      totalCollected: getTotalCollected(safeState.contributions),
+      totalReceivables: getTotalReceivables(safeState.receivables),
+      totalPayables: getTotalPayablesOutstanding(safeState.payables),
+      overdueReceivables: getOverdueReceivables(safeState.receivables),
     }),
-    [state.contributions, state.payables, state.receivables, state.settings]
+    [
+      safeState.contributions,
+      safeState.payables,
+      safeState.receivables,
+      safeState.settings,
+    ]
   )
 
   const getMember = useCallback(
-    (id) => state.members.find((m) => m.id === id),
-    [state.members]
+    (id) => safeState.members.find((m) => m.id === id),
+    [safeState.members]
   )
 
   const resetData = useCallback(() => {
@@ -352,7 +363,7 @@ export function PoolProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      state,
+      state: safeState,
       dispatch: guardedDispatch,
       ledger,
       stats,
@@ -360,13 +371,13 @@ export function PoolProvider({ children }) {
       getMember,
       resetData,
       importData,
-      symbol: state.settings?.currencySymbol || '₹',
+      symbol: safeState.settings?.currencySymbol || '₹',
       canEdit: !cloud || canEdit,
       readOnly: cloud && !canEdit,
       isCloud: cloud,
     }),
     [
-      state,
+      safeState,
       guardedDispatch,
       ledger,
       stats,

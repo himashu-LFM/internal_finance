@@ -69,23 +69,8 @@ export function AuthProvider({ children }) {
       setLoading(false)
       return
     }
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.user) {
-      const p = await ensureProfile(session.user)
-      setUser(session.user)
-      setProfile(p)
-      await refreshProfiles()
-    } else {
-      setUser(null)
-      setProfile(null)
-    }
-    setLoading(false)
-  }, [refreshProfiles])
-
-  useEffect(() => {
-    loadSession()
-    if (!isCloudEnabled) return
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
         const p = await ensureProfile(session.user)
         setUser(session.user)
@@ -94,7 +79,33 @@ export function AuthProvider({ children }) {
       } else {
         setUser(null)
         setProfile(null)
-        setProfiles([])
+      }
+    } catch (err) {
+      console.error('Auth load failed:', err)
+      setUser(null)
+      setProfile(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [refreshProfiles])
+
+  useEffect(() => {
+    loadSession()
+    if (!isCloudEnabled) return
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      try {
+        if (session?.user) {
+          const p = await ensureProfile(session.user)
+          setUser(session.user)
+          setProfile(p)
+          await refreshProfiles()
+        } else {
+          setUser(null)
+          setProfile(null)
+          setProfiles([])
+        }
+      } catch (err) {
+        console.error('Auth state change failed:', err)
       }
     })
     return () => subscription.unsubscribe()

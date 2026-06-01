@@ -36,8 +36,8 @@ export function daysOverdue(dueDate) {
   return diff > 0 ? diff : 0
 }
 
-export function getConfirmedContributions(contributions) {
-  return contributions.filter((c) => c.status === 'confirmed')
+export function getConfirmedContributions(contributions = []) {
+  return (contributions || []).filter((c) => c.status === 'confirmed')
 }
 
 export function getMemberContributed(memberId, contributions) {
@@ -46,8 +46,8 @@ export function getMemberContributed(memberId, contributions) {
     .reduce((sum, c) => sum + c.amount, 0)
 }
 
-export function getMemberPendingReceivable(memberId, receivables) {
-  return receivables
+export function getMemberPendingReceivable(memberId, receivables = []) {
+  return (receivables || [])
     .filter(
       (r) =>
         r.memberId === memberId &&
@@ -56,8 +56,8 @@ export function getMemberPendingReceivable(memberId, receivables) {
     .reduce((sum, r) => sum + (r.amount - (r.amountPaid || 0)), 0)
 }
 
-export function getMemberReimbursementsDue(memberId, payables) {
-  return payables
+export function getMemberReimbursementsDue(memberId, payables = []) {
+  return (payables || [])
     .filter(
       (p) =>
         p.paidById === memberId &&
@@ -71,14 +71,14 @@ export function getTotalCollected(contributions) {
   return getConfirmedContributions(contributions).reduce((s, c) => s + c.amount, 0)
 }
 
-export function getTotalReceivables(receivables) {
-  return receivables
+export function getTotalReceivables(receivables = []) {
+  return (receivables || [])
     .filter((r) => r.status === 'pending' || r.status === 'partially_paid')
     .reduce((s, r) => s + (r.amount - (r.amountPaid || 0)), 0)
 }
 
-export function getTotalPayablesOutstanding(payables) {
-  return payables
+export function getTotalPayablesOutstanding(payables = []) {
+  return (payables || [])
     .filter((p) => p.status === 'paid' || p.status === 'pending')
     .reduce((s, p) => {
       if (p.status === 'paid') return s + p.amount
@@ -87,17 +87,17 @@ export function getTotalPayablesOutstanding(payables) {
     }, 0)
 }
 
-export function getPoolBalance(contributions, payables, settings = {}) {
-  const opening = settings.openingBalance || 0
+export function getPoolBalance(contributions, payables = [], settings = {}) {
+  const opening = settings?.openingBalance || 0
   const inflow = getTotalCollected(contributions)
-  const outflow = payables
+  const outflow = (payables || [])
     .filter((p) => p.status === 'paid' || p.status === 'reimbursed')
     .reduce((s, p) => s + p.amount, 0)
   return opening + inflow - outflow
 }
 
-export function getOverdueReceivables(receivables) {
-  return receivables.filter(
+export function getOverdueReceivables(receivables = []) {
+  return (receivables || []).filter(
     (r) =>
       (r.status === 'pending' || r.status === 'partially_paid') &&
       daysOverdue(r.dueDate) > 0

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { normalizePoolState } from '../utils/normalizeState'
 
 const STORAGE_KEY = 'budget-pool-state-v2'
 
@@ -6,7 +7,7 @@ export function loadState(fallback) {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return fallback
-    return JSON.parse(raw)
+    return normalizePoolState(JSON.parse(raw))
   } catch {
     return fallback
   }

@@ -11,6 +11,7 @@ import {
 import { getSeedState } from '../data/seed'
 import { mergeInitialTeam } from '../data/initialTeam'
 import { loadState, saveState, clearStorage } from '../hooks/useLocalStorage'
+import { normalizePoolState } from '../utils/normalizeState'
 import { generateLedger } from '../utils/ledger'
 import {
   getPoolBalance,
@@ -34,11 +35,14 @@ function uid(prefix) {
 function reducer(state, action) {
   switch (action.type) {
     case 'HYDRATE':
-      return action.payload
+      return normalizePoolState(action.payload)
     case 'RESET':
       return getSeedState()
     case 'IMPORT':
-      return { ...action.payload, lastSaved: new Date().toISOString() }
+      return normalizePoolState({
+        ...action.payload,
+        lastSaved: new Date().toISOString(),
+      })
     case 'UPDATE_SETTINGS':
       return {
         ...state,

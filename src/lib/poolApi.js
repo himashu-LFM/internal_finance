@@ -1,4 +1,5 @@
 import { supabase, isCloudEnabled } from './supabase'
+import { normalizePoolState } from '../utils/normalizeState'
 
 export async function fetchPoolState() {
   if (!isCloudEnabled) return null
@@ -8,11 +9,11 @@ export async function fetchPoolState() {
     .eq('id', 1)
     .maybeSingle()
   if (error) throw error
-  if (!data?.data) return null
-  return {
+  if (data?.data == null || typeof data.data !== 'object') return null
+  return normalizePoolState({
     ...data.data,
     lastSaved: data.updated_at || data.data.lastSaved,
-  }
+  })
 }
 
 export async function savePoolState(state, userId) {
@@ -40,10 +41,12 @@ export function subscribePoolState(onUpdate) {
       (payload) => {
         const row = payload.new
         if (row?.data) {
-          onUpdate({
-            ...row.data,
-            lastSaved: row.updated_at || row.data.lastSaved,
-          })
+          onUpdate(
+            normalizePoolState({
+              ...row.data,
+              lastSaved: row.updated_at || row.data.lastSaved,
+            })
+          )
         }
       }
     )

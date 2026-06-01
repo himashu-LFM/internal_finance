@@ -5,7 +5,12 @@ function nextId() {
   return `ledger-${entryCounter}`
 }
 
-export function generateLedger({ contributions, payables, receivables, settings }) {
+export function generateLedger({
+  contributions = [],
+  payables = [],
+  receivables = [],
+  settings,
+} = {}) {
   entryCounter = 0
   const events = []
 

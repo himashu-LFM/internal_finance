@@ -14,10 +14,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Environment
+# Environment (never commit real secrets)
 .env
-.env.*
-!.env.example
+.env.local
+.env.*.local
 
 # Editor / OS
 .vscode/*

@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useState,
+  useRef,
 } from 'react'
 import { getSeedState } from '../data/seed'
 import { mergeInitialTeam } from '../data/initialTeam'
@@ -19,6 +20,10 @@ import {
   getOverdueReceivables,
   applyContributionToReceivables,
 } from '../utils/calculations'
+import { isCloudEnabled } from '../lib/supabase'
+import { fetchPoolState, savePoolState, subscribePoolState } from '../lib/poolApi'
+import { useAuth } from './AuthContext'
+import { useToast } from './ToastContext'
 
 const PoolContext = createContext(null)
 
@@ -191,20 +196,112 @@ function reducer(state, action) {
   }
 }
 
+function getLocalInitialState() {
+  return mergeInitialTeam(loadState(getSeedState()))
+}
+
 export function PoolProvider({ children }) {
+  const { canEdit, isAdmin, user, isCloudEnabled: cloud, authLoading } = useAuth()
+  const { toast } = useToast()
   const [loading, setLoading] = useState(true)
-  const [state, dispatch] = useReducer(reducer, null, () =>
-    mergeInitialTeam(loadState(getSeedState()))
+  const [state, dispatch] = useReducer(reducer, () =>
+    cloud ? getSeedState() : getLocalInitialState()
   )
+  const skipSaveRef = useRef(false)
+  const remoteSaveRef = useRef(false)
 
+  // Load shared data from Supabase
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 400)
+    if (!cloud || authLoading) return
+    if (!user) {
+      setLoading(false)
+      return
+    }
+
+    let unsub = () => {}
+
+    async function load() {
+      try {
+        let data = await fetchPoolState()
+        if (!data) {
+          data = mergeInitialTeam(getSeedState())
+          if (canEdit) {
+            remoteSaveRef.current = true
+            await savePoolState(data, user.id)
+          }
+        }
+        skipSaveRef.current = true
+        dispatch({ type: 'HYDRATE', payload: data })
+      } catch (err) {
+        console.error(err)
+        toast('Failed to load shared data', 'error')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    load()
+    unsub = subscribePoolState((remote) => {
+      if (remoteSaveRef.current) {
+        remoteSaveRef.current = false
+        return
+      }
+      skipSaveRef.current = true
+      dispatch({ type: 'HYDRATE', payload: remote })
+    })
+
+    return () => unsub()
+  }, [cloud, user?.id, authLoading, canEdit, toast])
+
+  // Local-only mode loading
+  useEffect(() => {
+    if (cloud) return
+    const t = setTimeout(() => setLoading(false), 300)
     return () => clearTimeout(t)
-  }, [])
+  }, [cloud])
 
+  // Persist changes
   useEffect(() => {
-    if (!loading) saveState(state)
-  }, [state, loading])
+    if (loading || skipSaveRef.current) {
+      skipSaveRef.current = false
+      return
+    }
+
+    if (cloud) {
+      if (!canEdit || !user) return
+      const timer = setTimeout(async () => {
+        try {
+          remoteSaveRef.current = true
+          await savePoolState(state, user.id)
+        } catch (err) {
+          console.error(err)
+          toast('Failed to save — check connection', 'error')
+        }
+      }, 600)
+      return () => clearTimeout(timer)
+    }
+
+    saveState(state)
+  }, [state, loading, cloud, canEdit, user?.id, toast])
+
+  const guardedDispatch = useCallback(
+    (action) => {
+      if (action.type === 'HYDRATE') {
+        dispatch(action)
+        return
+      }
+      if (cloud && !canEdit) {
+        toast('You have read-only access. Ask an admin for edit permission.', 'error')
+        return
+      }
+      if (action.type === 'RESET' && cloud && !isAdmin) {
+        toast('Only admins can reset data', 'error')
+        return
+      }
+      dispatch(action)
+    },
+    [cloud, canEdit, isAdmin, toast]
+  )
 
   const ledger = useMemo(
     () =>
@@ -238,27 +335,45 @@ export function PoolProvider({ children }) {
   )
 
   const resetData = useCallback(() => {
-    clearStorage()
+    if (!cloud) clearStorage()
     dispatch({ type: 'RESET' })
-  }, [])
+  }, [cloud])
 
-  const importData = useCallback((data) => {
-    dispatch({ type: 'IMPORT', payload: data })
-  }, [])
+  const importData = useCallback(
+    (data) => {
+      guardedDispatch({ type: 'IMPORT', payload: data })
+    },
+    [guardedDispatch]
+  )
 
   const value = useMemo(
     () => ({
       state,
-      dispatch,
+      dispatch: guardedDispatch,
       ledger,
       stats,
-      loading,
+      loading: loading || authLoading,
       getMember,
       resetData,
       importData,
       symbol: state.settings?.currencySymbol || '₹',
+      canEdit: !cloud || canEdit,
+      readOnly: cloud && !canEdit,
+      isCloud: cloud,
     }),
-    [state, ledger, stats, loading, getMember, resetData, importData]
+    [
+      state,
+      guardedDispatch,
+      ledger,
+      stats,
+      loading,
+      authLoading,
+      getMember,
+      resetData,
+      importData,
+      canEdit,
+      cloud,
+    ]
   )
 
   return <PoolContext.Provider value={value}>{children}</PoolContext.Provider>

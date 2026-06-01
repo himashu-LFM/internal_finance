@@ -1,12 +1,13 @@
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
+import { ReadOnlyBanner } from './ReadOnlyBanner'
 import { usePool } from '../../context/PoolContext'
 import { PageSkeleton } from '../ui/Skeleton'
 import { formatDateTime } from '../../utils/calculations'
 
 export function Layout() {
-  const { loading, state } = usePool()
+  const { loading, state, isCloud } = usePool()
 
   if (loading) {
     return (
@@ -21,11 +22,13 @@ export function Layout() {
       <Sidebar />
       <div className="pl-64">
         <Header />
+        <ReadOnlyBanner />
         <main className="p-6">
           <Outlet />
         </main>
         <footer className="no-print border-t border-slate-200 px-6 py-3 text-xs text-slate-500">
-          Last saved: {state.lastSaved ? formatDateTime(state.lastSaved) : '—'} · Data stored locally
+          Last saved: {state.lastSaved ? formatDateTime(state.lastSaved) : '—'} ·{' '}
+          {isCloud ? 'Shared cloud data (all users see the same pool)' : 'Stored locally in this browser only'}
         </footer>
       </div>
     </div>

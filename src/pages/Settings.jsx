@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { usePool } from '../context/PoolContext'
+import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { Button } from '../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
@@ -10,7 +11,8 @@ import { clearStorage } from '../hooks/useLocalStorage'
 import { getSeedState } from '../data/seed'
 
 export default function Settings() {
-  const { state, dispatch, resetData, importData } = usePool()
+  const { state, dispatch, resetData, importData, isCloud } = usePool()
+  const { isAdmin } = useAuth()
   const { toast } = useToast()
   const [form, setForm] = useState({ ...state.settings })
   const [confirmReset, setConfirmReset] = useState(false)
@@ -103,17 +105,20 @@ export default function Settings() {
         </CardContent>
       </Card>
 
-      <Card className="border-red-200">
-        <CardHeader><CardTitle className="text-red-700">Danger zone</CardTitle></CardHeader>
-        <CardContent>
-          <p className="text-sm text-slate-600 mb-4">
-            Reset all data and reload sample seed data. This cannot be undone unless you have a backup.
-          </p>
-          <Button variant="danger" onClick={() => setConfirmReset(true)}>
-            Reset all data
-          </Button>
-        </CardContent>
-      </Card>
+      {(!isCloud || isAdmin) && (
+        <Card className="border-red-200">
+          <CardHeader><CardTitle className="text-red-700">Danger zone</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-sm text-slate-600 mb-4">
+              Reset all data to empty. This affects everyone when using shared cloud data.
+              {isCloud && ' Admin only.'}
+            </p>
+            <Button variant="danger" onClick={() => setConfirmReset(true)}>
+              Reset all data
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <ConfirmDialog
         open={confirmReset}

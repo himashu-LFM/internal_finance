@@ -8,9 +8,12 @@ import {
   BookOpen,
   BarChart3,
   Settings,
+  Shield,
+  LogOut,
 } from 'lucide-react'
 import { cn } from '../../utils/cn'
 import { usePool } from '../../context/PoolContext'
+import { useAuth } from '../../context/AuthContext'
 
 const links = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -24,6 +27,7 @@ const links = [
 
 export function Sidebar() {
   const { state, stats } = usePool()
+  const { isAdmin, isCloudEnabled, profile, signOut } = useAuth()
   const overdueCount = stats.overdueReceivables.length
 
   return (
@@ -65,7 +69,21 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
-      <div className="border-t border-slate-700/50 p-3">
+      <div className="border-t border-slate-700/50 p-3 space-y-0.5">
+        {isAdmin && (
+          <NavLink
+            to="/admin"
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium',
+                isActive ? 'bg-blue-500/20 text-white' : 'text-slate-400 hover:text-white'
+              )
+            }
+          >
+            <Shield className="h-5 w-5" />
+            Admin
+          </NavLink>
+        )}
         <NavLink
           to="/settings"
           className={({ isActive }) =>
@@ -78,6 +96,21 @@ export function Sidebar() {
           <Settings className="h-5 w-5" />
           Settings
         </NavLink>
+        {isCloudEnabled && (
+          <div className="px-3 pt-2">
+            <p className="text-xs text-slate-500 truncate" title={profile?.email}>
+              {profile?.email}
+            </p>
+            <button
+              type="button"
+              onClick={() => signOut()}
+              className="mt-2 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-slate-400 hover:bg-slate-800 hover:text-white"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   )
